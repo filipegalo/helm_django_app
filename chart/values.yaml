@@ -1,0 +1,101 @@
+# Global settings
+nameOverride: ""
+fullnameOverride: ""
+
+# PostgreSQL configuration
+postgres:
+  image:
+    repository: postgres
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+  credentials:
+    database: postgres
+    username: postgres
+    # You should override this in a separate values file or via --set
+    password: mysecretpassword
+  service:
+    port: 5432
+  # Add custom environment variables for postgres
+  extraEnv: []
+  # - name: POSTGRES_MAX_CONNECTIONS
+  #   value: "100"
+  # - name: POSTGRES_SHARED_BUFFERS
+  #   value: "256MB"
+  livenessProbe:
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+
+# Django application configuration
+django:
+  image:
+    repository: django-app
+    # tag will default to Chart's appVersion if not set
+    tag: ""
+    pullPolicy: IfNotPresent
+  # Add replicas configuration
+  replicas: 1
+  debug: false
+  logLevel: INFO
+  allowedHosts:
+    - localhost
+    - 127.0.0.1
+  # Migration configuration
+  migrations:
+    targets:
+      - "main 0001" # Run specific migration for main app
+  resources:
+    limits:
+      memory: "256Mi"
+      cpu: "500m"
+    requests:
+      memory: "128Mi"
+      cpu: "250m"
+  service:
+    port: 8000
+    type: ClusterIP
+  # Add custom environment variables for django
+  extraEnv: []
+  # - name: DJANGO_SETTINGS_MODULE
+  #   value: "myapp.settings"
+  # - name: SECRET_KEY
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: django-secrets
+  #       key: secret-key
+  livenessProbe:
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+  readinessProbe:
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
+
+# Common Kubernetes configurations
+podAnnotations: {}
+podLabels: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}

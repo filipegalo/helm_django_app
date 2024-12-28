@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "chart.fullname" . }}-postgres-test"
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: postgres-test
+      image: postgres:latest
+      command: ['psql']
+      args:
+        - "-h"
+        - "{{ include "chart.fullname" . }}-postgres"
+        - "-U"
+        - "{{ .Values.postgres.credentials.username }}"
+        - "-d"
+        - "{{ .Values.postgres.credentials.database }}"
+        - "-c"
+        - "SELECT 1"
+      env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "chart.fullname" . }}-postgres-secret
+              key: POSTGRES_PASSWORD
+  restartPolicy: Never 

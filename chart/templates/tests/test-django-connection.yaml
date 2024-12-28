@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "chart.fullname" . }}-django-test"
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: curl-test
+      image: curlimages/curl:latest
+      command: ['/bin/sh', '-c']
+      args:
+        - |
+          # Try multiple times (with backoff)
+          for i in $(seq 1 5); do
+            if curl -s -f -H 'Host: localhost' http://{{ include "chart.fullname" . }}-django:{{ .Values.django.service.port }}/; then
+              echo "Django application is healthy"
+              exit 0
+            fi
+            echo "Attempt $i failed, waiting..."
+            sleep $((i * 2))
+          done
+          echo "Django application is not responding"
+          exit 1
+  restartPolicy: Never 

@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "chart.fullname" . }}-version-test"
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+spec:
+  containers:
+    - name: version-test
+      image: "{{ .Values.django.image.repository }}:{{ .Values.django.image.tag | default .Chart.AppVersion }}"
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          VERSION=$(python manage.py shell -c "from django.conf import settings; print(settings.VERSION)")
+          if [ "$VERSION" != "{{ .Chart.AppVersion }}" ]; then
+            echo "Version mismatch: expected {{ .Chart.AppVersion }}, got $VERSION"
+            exit 1
+          fi
+      env:
+        - name: POSTGRES_DB
+          value: {{ .Values.postgres.credentials.database }}
+        - name: POSTGRES_USER
+          value: {{ .Values.postgres.credentials.username }}
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "chart.fullname" . }}-postgres-secret
+              key: POSTGRES_PASSWORD
+        - name: POSTGRES_HOST
+          value: {{ include "chart.fullname" . }}-postgres
+        - name: POSTGRES_PORT
+          value: "{{ .Values.postgres.service.port }}"
+        - name: VERSION
+          value: {{ .Chart.AppVersion }}
+  restartPolicy: Never 

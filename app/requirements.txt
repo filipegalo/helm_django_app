@@ -1,0 +1,3 @@
+Django==5.1.4           # Django is a high-level Python web framework that enables rapid development of secure and maintainable websites
+psycopg2-binary==2.9.10 # psycopg2-binary is a Python adapter for PostgreSQL
+django-environ==0.11.2  # django-environ is a library to manage environment variables

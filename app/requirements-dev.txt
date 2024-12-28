@@ -1,0 +1,6 @@
+--requirement requirements.txt
+
+pipdeptree==2.24.0     # pipdeptree is a tool to display dependency tree of packages
+pylint==3.3.3          # pylint is a tool to check code quality
+pylint-django==2.6.1   # pylint-django is a plugin for pylint to check Django code quality
+black==24.10.0         # black is a code formatter

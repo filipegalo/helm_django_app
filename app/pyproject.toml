@@ -1,0 +1,36 @@
+[project]
+name = "django-app"
+authors = [
+    {name = "Filipe Galo", email = "fcostagalo@gmail.com"}
+]
+description = "Django app"
+version = "0.0.1"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "Django==5.1.4",
+    "psycopg2-binary==2.9.10",
+    "django-environ==0.11.2"
+]
+
+[tool.black]
+line-length = 120
+target-version = ['py312']
+
+[tool.pylint.master]
+django-settings-module = "app.settings"
+
+ignore = ["venv"]
+ignore-patterns = [".*migrations.*"]
+
+load-plugins = ["pylint_django", "pylint_django.checkers.migrations"]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint."messages control"]
+disable = [
+    "missing-module-docstring",
+    "missing-class-docstring",
+    "missing-function-docstring",
+]

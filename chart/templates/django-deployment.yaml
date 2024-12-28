@@ -1,0 +1,110 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "chart.fullname" . }}-django
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.django.replicas }}
+  selector:
+    matchLabels:
+      {{- include "chart.selectorLabels" . | nindent 6 }}
+      component: django
+  template:
+    metadata:
+      labels:
+        {{- include "chart.selectorLabels" . | nindent 8 }}
+        component: django
+    spec:
+      initContainers:
+        - name: migrate-db
+          image: "{{ .Values.django.image.repository }}:{{ .Values.django.image.tag | default .Chart.AppVersion }}"
+          command: ["/bin/sh", "-c"]
+          {{- if .Values.django.migrations.targets }}
+          args:
+            - |
+              {{- range .Values.django.migrations.targets }}
+              {{- $parts := splitList " " . }}
+              python manage.py migrate {{ first $parts | quote }} {{ last $parts | quote }} && \
+              {{- end }}
+              true
+          {{- else }}
+          args:
+            - "python manage.py migrate"
+          {{- end }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.credentials.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.credentials.username }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_HOST
+              value: {{ include "chart.fullname" . }}-postgres
+            - name: POSTGRES_PORT
+              value: "{{ .Values.postgres.service.port }}"
+            {{- if .Values.django.extraEnv }}
+            {{- toYaml .Values.django.extraEnv | nindent 12 }}
+            {{- end }}
+      containers:
+        - name: django-server
+          image: "{{ .Values.django.image.repository }}:{{ .Values.django.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.django.image.pullPolicy }}
+          command: ["python3"]
+          args: ["manage.py", "runserver", "0.0.0.0:{{ .Values.django.service.port }}"]
+          resources:
+            {{- toYaml .Values.django.resources | nindent 12 }}
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.credentials.database }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.credentials.username }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "chart.fullname" . }}-postgres-secret
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_HOST
+              value: {{ include "chart.fullname" . }}-postgres
+            - name: POSTGRES_PORT
+              value: "{{ .Values.postgres.service.port }}"
+            - name: DEBUG
+              value: {{ .Values.django.debug | quote }}
+            - name: DJANGO_LOG_LEVEL
+              value: {{ .Values.django.logLevel | quote }}
+            - name: ALLOWED_HOSTS
+              value: "{{ .Values.django.allowedHosts | join "," }}"
+            - name: VERSION
+              value: {{ .Chart.AppVersion }} 
+            - name: MY_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            {{- if .Values.django.extraEnv }}
+            {{- toYaml .Values.django.extraEnv | nindent 12 }}
+            {{- end }}
+          ports:
+            - containerPort: {{ .Values.django.service.port }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.django.livenessProbe.path }}
+              port: {{ .Values.django.service.port }}
+              httpHeaders:
+              - name: host
+                value: localhost
+            {{- toYaml .Values.django.livenessProbe | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.django.readinessProbe.path }}
+              port: {{ .Values.django.service.port }}
+              httpHeaders:
+              - name: host
+                value: localhost
+            {{- toYaml .Values.django.readinessProbe | nindent 12 }}
