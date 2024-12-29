@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - actions
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set environment variables
+        id: set-variables
+        run: |
+          echo "REPOSITORY=ghcr.io/$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$(cat app/version)" >> $GITHUB_OUTPUT
+          echo "CHART_VERSION=$(cat chart/Chart.yaml | grep 'version:' | awk '{print $2}')" >> $GITHUB_OUTPUT
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./app
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.set-variables.outputs.VERSION }}
+            ghcr.io/${{ github.repository }}:latest
+
+      - name: Package Helm chart
+        run: |
+          helm package ./chart --version ${{ steps.set-variables.outputs.CHART_VERSION }} --app-version ${{ steps.set-variables.outputs.VERSION }}
+          helm push ./helm-django-postgres-${{ steps.set-variables.outputs.CHART_VERSION }}.tgz oci://${{ steps.set-variables.outputs.REPOSITORY }}/charts
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.set-variables.outputs.VERSION }}
+          release_name: Release v${{ steps.set-variables.outputs.VERSION }}
+          draft: false
+          prerelease: false
